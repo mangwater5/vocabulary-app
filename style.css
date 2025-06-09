@@ -1,3 +1,19 @@
+/* 전역 스타일 */
+:root {
+    --primary-color: #4CAF50;
+    --primary-dark: #388E3C;
+    --primary-light: #C8E6C9;
+    --accent-color: #FF5722;
+    --text-primary: #212121;
+    --text-secondary: #757575;
+    --divider-color: #BDBDBD;
+    --background-color: #f5f5f5;
+    --success-color: #4CAF50;
+    --error-color: #f44336;
+    --warning-color: #ff9800;
+    --white: #ffffff;
+}
+
 * {
     margin: 0;
     padding: 0;

@@ -37,8 +37,6 @@
                             <input type="text" 
                                 id="englishWord" 
                                 placeholder="영어 단어 입력" 
-                                pattern="[A-Za-z\s]+" 
-                                title="영어만 입력 가능합니다"
                                 autocomplete="off"
                                 required>
                         </div>
@@ -47,8 +45,6 @@
                             <input type="text" 
                                 id="koreanWord" 
                                 placeholder="한글 뜻 입력" 
-                                pattern="[가-힣\s]+" 
-                                title="한글만 입력 가능합니다"
                                 autocomplete="off"
                                 required>
                         </div>
@@ -104,52 +100,68 @@
                         <i class="fas fa-book"></i>
                         영어 → 한글 시험
                     </button>
+                    <button id="startListenToEng" class="test-mode-btn">
+                        <i class="fas fa-headphones"></i>
+                        듣기 → 영어 시험
+                    </button>
                 </div>
             </div>
             <div class="test-area" style="display: none;">
                 <div class="test-header">
-                    <span id="progress" class="progress-text">1 / 10</span>
+                    <div class="test-progress">
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill"></div>
+                        </div>
+                        <span id="progress" class="progress-text">1 / 10</span>
+                    </div>
                 </div>
                 <div class="question-box">
                     <div class="question-content">
-                        <label>문제:</label>
-                        <span id="question" class="question-text"></span>
+                        <div class="question-label">문제:</div>
+                        <div id="question" class="question-text"></div>
+                        <button id="listenAgain" class="listen-btn" style="display: none;">
+                            <i class="fas fa-volume-up"></i>
+                            다시 듣기
+                        </button>
                     </div>
                     <div class="answer-box">
-                        <input type="text" id="answer" placeholder="답을 입력하세요">
-                        <button id="submitAnswer">
+                        <input type="text" id="answer" placeholder="답을 입력하세요" autocomplete="off">
+                        <button id="submitAnswer" class="submit-btn">
                             <i class="fas fa-check"></i>
                             정답 확인
                         </button>
                     </div>
                     <div id="answerFeedback" class="answer-feedback"></div>
                 </div>
-                <div class="result-box" style="display: none;">
-                    <h3>시험 결과</h3>
-                    <div class="score-box">
-                        <div class="score-item">
-                            <span class="score-label">맞은 개수:</span>
-                            <span id="correctCount" class="score-value">0</span>
-                            <span class="score-total">/ <span id="totalCount">0</span></span>
+            </div>
+            <div class="result-box" style="display: none;">
+                <h3>시험 결과</h3>
+                <div class="score-box">
+                    <div class="score-circle">
+                        <div class="score-number">
+                            <span id="correctCount">0</span>
+                            <span class="score-divider">/</span>
+                            <span id="totalCount">0</span>
                         </div>
+                        <div class="score-label">정답률</div>
                     </div>
-                    <div id="wrongAnswers" class="wrong-answers">
-                        <!-- 틀린 단어들이 여기에 표시됩니다 -->
-                    </div>
-                    <div class="result-buttons">
-                        <button id="retryWrongWords" class="retry-btn">
-                            <i class="fas fa-redo"></i>
-                            틀린 단어만 다시 보기
-                        </button>
-                        <button id="restartTest" class="restart-btn">
-                            <i class="fas fa-sync"></i>
-                            처음부터 다시 시험보기
-                        </button>
-                        <button id="backToOptions" class="back-btn">
-                            <i class="fas fa-arrow-left"></i>
-                            시험 선택으로 돌아가기
-                        </button>
-                    </div>
+                </div>
+                <div id="wrongAnswers" class="wrong-answers">
+                    <!-- 틀린 단어들이 여기에 표시됩니다 -->
+                </div>
+                <div class="result-buttons">
+                    <button id="retryWrongWords" class="retry-btn">
+                        <i class="fas fa-redo"></i>
+                        틀린 단어만 다시 보기
+                    </button>
+                    <button id="restartTest" class="restart-btn">
+                        <i class="fas fa-sync"></i>
+                        처음부터 다시 시험보기
+                    </button>
+                    <button id="backToOptions" class="back-btn">
+                        <i class="fas fa-arrow-left"></i>
+                        시험 선택으로 돌아가기
+                    </button>
                 </div>
             </div>
         </section>
