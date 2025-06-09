@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="단어장">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="description" content="영어 단어를 쉽게 암기하고 학습할 수 있는 스마트 단어장 앱입니다.">
+    <title>스마트 단어장</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192x192.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>스마트 단어장</h1>
+            <nav>
+                <button class="menu-btn active" data-section="memorize">암기</button>
+                <button class="menu-btn" data-section="test">시험</button>
+                <button class="menu-btn" data-section="speaking">스피킹</button>
+            </nav>
+        </header>
+
+        <!-- 암기 섹션 -->
+        <section id="memorize" class="section active">
+            <div class="word-input-container">
+                <h3>새 단어 추가</h3>
+                <div class="word-input">
+                    <div class="input-group">
+                        <div class="input-field">
+                            <label for="englishWord">영어 단어</label>
+                            <input type="text" 
+                                id="englishWord" 
+                                placeholder="영어 단어 입력" 
+                                pattern="[A-Za-z\s]+" 
+                                title="영어만 입력 가능합니다"
+                                autocomplete="off"
+                                required>
+                        </div>
+                        <div class="input-field">
+                            <label for="koreanWord">한글 뜻</label>
+                            <input type="text" 
+                                id="koreanWord" 
+                                placeholder="한글 뜻 입력" 
+                                pattern="[가-힣\s]+" 
+                                title="한글만 입력 가능합니다"
+                                autocomplete="off"
+                                required>
+                        </div>
+                    </div>
+                    <button id="addWord" class="add-word-btn">
+                        <i class="fas fa-plus"></i>
+                        단어 추가
+                    </button>
+                </div>
+            </div>
+            <div class="memorize-options">
+                <button id="toggleMode" class="mode-btn">
+                    <i class="fas fa-sync-alt"></i>
+                    학습 모드 전환
+                </button>
+                <button id="shuffleWords" class="mode-btn">
+                    <i class="fas fa-random"></i>
+                    단어 순서 섞기
+                </button>
+            </div>
+            <div class="word-list">
+                <h3>단어 목록 <span id="wordCount" class="word-count">(0개)</span></h3>
+                <div class="word-list-header">
+                    <input type="text" id="searchWord" placeholder="단어 검색..." class="search-input">
+                    <div class="sort-buttons">
+                        <button id="sortByLengthAsc" class="sort-btn" title="짧은 단어순">
+                            <i class="fas fa-sort-amount-down-alt"></i>
+                            짧은 단어순
+                        </button>
+                        <button id="sortByLengthDesc" class="sort-btn" title="긴 단어순">
+                            <i class="fas fa-sort-amount-down"></i>
+                            긴 단어순
+                        </button>
+                    </div>
+                </div>
+                <div id="wordContainer" class="word-container">
+                    <!-- 단어들이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 시험 섹션 -->
+        <section id="test" class="section">
+            <div class="test-options">
+                <h3>시험 모드 선택</h3>
+                <p class="test-description">원하는 시험 모드를 선택하세요.</p>
+                <div class="test-buttons">
+                    <button id="startKorToEng" class="test-mode-btn">
+                        <i class="fas fa-language"></i>
+                        한글 → 영어 시험
+                    </button>
+                    <button id="startEngToKor" class="test-mode-btn">
+                        <i class="fas fa-book"></i>
+                        영어 → 한글 시험
+                    </button>
+                </div>
+            </div>
+            <div class="test-area" style="display: none;">
+                <div class="test-header">
+                    <span id="progress" class="progress-text">1 / 10</span>
+                </div>
+                <div class="question-box">
+                    <div class="question-content">
+                        <label>문제:</label>
+                        <span id="question" class="question-text"></span>
+                    </div>
+                    <div class="answer-box">
+                        <input type="text" id="answer" placeholder="답을 입력하세요">
+                        <button id="submitAnswer">
+                            <i class="fas fa-check"></i>
+                            정답 확인
+                        </button>
+                    </div>
+                    <div id="answerFeedback" class="answer-feedback"></div>
+                </div>
+                <div class="result-box" style="display: none;">
+                    <h3>시험 결과</h3>
+                    <div class="score-box">
+                        <div class="score-item">
+                            <span class="score-label">맞은 개수:</span>
+                            <span id="correctCount" class="score-value">0</span>
+                            <span class="score-total">/ <span id="totalCount">0</span></span>
+                        </div>
+                    </div>
+                    <div id="wrongAnswers" class="wrong-answers">
+                        <!-- 틀린 단어들이 여기에 표시됩니다 -->
+                    </div>
+                    <div class="result-buttons">
+                        <button id="retryWrongWords" class="retry-btn">
+                            <i class="fas fa-redo"></i>
+                            틀린 단어만 다시 보기
+                        </button>
+                        <button id="restartTest" class="restart-btn">
+                            <i class="fas fa-sync"></i>
+                            처음부터 다시 시험보기
+                        </button>
+                        <button id="backToOptions" class="back-btn">
+                            <i class="fas fa-arrow-left"></i>
+                            시험 선택으로 돌아가기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 스피킹 섹션 -->
+        <section id="speaking" class="section">
+            <div class="speaking-options">
+                <h3>발음 연습</h3>
+                <div class="speaking-controls">
+                    <select id="voiceSelect" class="voice-select">
+                        <option value="">기본 음성</option>
+                    </select>
+                    <div class="speed-control">
+                        <label>속도:</label>
+                        <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="1">
+                        <span id="speechRateValue">1.0x</span>
+                    </div>
+                </div>
+            </div>
+            <div class="speaking-list">
+                <div id="speakingContainer" class="speaking-container">
+                    <!-- 단어들이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+            <div class="practice-mode">
+                <button id="practiceAll" class="practice-btn">
+                    <i class="fas fa-play"></i>
+                    전체 단어 재생
+                </button>
+                <button id="practiceRandom" class="practice-btn">
+                    <i class="fas fa-random"></i>
+                    랜덤 단어 재생
+                </button>
+            </div>
+        </section>
+    </div>
+    <script src="script.js"></script>
+    <script>
+        // Service Worker 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker 등록 성공:', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker 등록 실패:', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html> 
