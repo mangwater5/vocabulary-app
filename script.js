@@ -1,7 +1,12 @@
 // 단어장 데이터 저장소
 let wordList = JSON.parse(localStorage.getItem('wordList')) || [];
 let isStudyMode = false;
-let currentSortOrder = 'date'; // 'date', 'lengthAsc', or 'lengthDesc'
+let currentSortOrder = 'date';
+let testWords = [];
+let currentTestIndex = 0;
+let correctAnswers = 0;
+let wrongAnswers = [];
+let currentTestMode = '';
 
 // DOM 요소
 const menuButtons = document.querySelectorAll('.menu-btn');
@@ -22,6 +27,21 @@ const speechRateInput = document.getElementById('speechRate');
 const speechRateValue = document.getElementById('speechRateValue');
 const practiceAllButton = document.getElementById('practiceAll');
 const practiceRandomButton = document.getElementById('practiceRandom');
+
+// 시험 모드 요소
+const testArea = document.querySelector('.test-area');
+const testOptions = document.querySelector('.test-options');
+const questionElement = document.getElementById('question');
+const answerInput = document.getElementById('answer');
+const submitAnswerButton = document.getElementById('submitAnswer');
+const progressElement = document.getElementById('progress');
+const resultBox = document.querySelector('.result-box');
+const correctCountElement = document.getElementById('correctCount');
+const totalCountElement = document.getElementById('totalCount');
+const wrongAnswersElement = document.getElementById('wrongAnswers');
+const retryWrongButton = document.getElementById('retryWrongWords');
+const restartTestButton = document.getElementById('restartTest');
+const backToOptionsButton = document.getElementById('backToOptions');
 
 // 음성 합성 초기화
 const synth = window.speechSynthesis;
@@ -45,11 +65,9 @@ menuButtons.forEach(button => {
     button.addEventListener('click', () => {
         const targetSection = button.dataset.section;
         
-        // 버튼 활성화 상태 변경
         menuButtons.forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         
-        // 섹션 표시 상태 변경
         sections.forEach(section => {
             section.classList.remove('active');
             if (section.id === targetSection) {
@@ -57,14 +75,13 @@ menuButtons.forEach(button => {
             }
         });
 
-        // 스피킹 섹션이 활성화되면 단어 목록 새로고침
         if (targetSection === 'speaking') {
             renderSpeakingList();
         }
     });
 });
 
-// Enter 키 이벤트 추가
+// Enter 키 이벤트
 englishInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -96,7 +113,6 @@ function addNewWord() {
         localStorage.setItem('wordList', JSON.stringify(wordList));
         renderWordList();
         
-        // 입력 필드 초기화
         englishInput.value = '';
         koreanInput.value = '';
         englishInput.focus();
@@ -113,7 +129,6 @@ function renderWordList() {
         word.korean.includes(searchTerm)
     );
 
-    // 정렬 적용
     if (currentSortOrder === 'lengthAsc') {
         filteredWords.sort((a, b) => a.english.length - b.english.length);
     } else if (currentSortOrder === 'lengthDesc') {
@@ -143,7 +158,6 @@ function renderWordList() {
         wordContainer.appendChild(wordElement);
     });
 
-    // 단어 개수 업데이트
     wordCountSpan.textContent = `(${wordList.length}개)`;
 }
 
@@ -190,6 +204,153 @@ function speakWord(text) {
     synth.speak(utterance);
 }
 
+// 시험 모드 시작
+function startTest(mode) {
+    currentTestMode = mode;
+    testWords = [...wordList];
+    shuffleArray(testWords);
+    currentTestIndex = 0;
+    correctAnswers = 0;
+    wrongAnswers = [];
+
+    testOptions.style.display = 'none';
+    testArea.style.display = 'block';
+    resultBox.style.display = 'none';
+    
+    showNextQuestion();
+}
+
+// 다음 문제 표시
+function showNextQuestion() {
+    if (currentTestIndex < testWords.length) {
+        const word = testWords[currentTestIndex];
+        questionElement.textContent = currentTestMode === 'KorToEng' ? word.korean : word.english;
+        answerInput.value = '';
+        answerInput.focus();
+        progressElement.textContent = `${currentTestIndex + 1} / ${testWords.length}`;
+    } else {
+        showTestResult();
+    }
+}
+
+// 답안 체크
+function checkAnswer() {
+    const currentWord = testWords[currentTestIndex];
+    const userAnswer = answerInput.value.trim().toLowerCase();
+    const correctAnswer = currentTestMode === 'KorToEng' ? 
+        currentWord.english.toLowerCase() : 
+        currentWord.korean;
+
+    if (userAnswer === correctAnswer.toLowerCase()) {
+        correctAnswers++;
+    } else {
+        wrongAnswers.push({
+            question: currentTestMode === 'KorToEng' ? currentWord.korean : currentWord.english,
+            correctAnswer: correctAnswer,
+            userAnswer: userAnswer
+        });
+    }
+
+    currentTestIndex++;
+    showNextQuestion();
+}
+
+// 시험 결과 표시
+function showTestResult() {
+    testArea.style.display = 'none';
+    resultBox.style.display = 'block';
+    
+    correctCountElement.textContent = correctAnswers;
+    totalCountElement.textContent = testWords.length;
+    
+    wrongAnswersElement.innerHTML = wrongAnswers.map(wrong => `
+        <div class="wrong-item">
+            <span class="question">${wrong.question}</span>
+            <span class="arrow">→</span>
+            <span class="correct">${wrong.correctAnswer}</span>
+            <span class="user-answer">(입력: ${wrong.userAnswer})</span>
+        </div>
+    `).join('');
+}
+
+// 틀린 단어만 다시 보기
+function retryWrongWords() {
+    testWords = wrongAnswers.map(wrong => ({
+        english: currentTestMode === 'KorToEng' ? wrong.correctAnswer : wrong.question,
+        korean: currentTestMode === 'KorToEng' ? wrong.question : wrong.correctAnswer
+    }));
+    
+    currentTestIndex = 0;
+    correctAnswers = 0;
+    wrongAnswers = [];
+    
+    if (testWords.length > 0) {
+        testArea.style.display = 'block';
+        resultBox.style.display = 'none';
+        showNextQuestion();
+    } else {
+        alert('틀린 단어가 없습니다!');
+    }
+}
+
+// 시험 다시 시작
+function restartTest() {
+    startTest(currentTestMode);
+}
+
+// 시험 선택으로 돌아가기
+function backToTestOptions() {
+    testArea.style.display = 'none';
+    resultBox.style.display = 'none';
+    testOptions.style.display = 'block';
+}
+
+// 전체 단어 재생
+function practiceAllWords() {
+    let index = 0;
+    const speakNext = () => {
+        if (index < wordList.length) {
+            const word = wordList[index];
+            speakWord(word.english);
+            index++;
+            setTimeout(speakNext, 2000); // 2초 간격으로 재생
+        }
+    };
+    speakNext();
+}
+
+// 랜덤 단어 재생
+function practiceRandomWord() {
+    if (wordList.length > 0) {
+        const randomIndex = Math.floor(Math.random() * wordList.length);
+        speakWord(wordList[randomIndex].english);
+    }
+}
+
+// 배열 섞기 함수
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// 이벤트 리스너 설정
+document.getElementById('startKorToEng').addEventListener('click', () => startTest('KorToEng'));
+document.getElementById('startEngToKor').addEventListener('click', () => startTest('EngToKor'));
+submitAnswerButton.addEventListener('click', checkAnswer);
+answerInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        checkAnswer();
+    }
+});
+retryWrongButton.addEventListener('click', retryWrongWords);
+restartTestButton.addEventListener('click', restartTest);
+backToOptionsButton.addEventListener('click', backToTestOptions);
+practiceAllButton.addEventListener('click', practiceAllWords);
+practiceRandomButton.addEventListener('click', practiceRandomWord);
+
 // 음성 설정 변경 이벤트
 voiceSelect.addEventListener('change', (e) => {
     selectedVoice = voices.find(voice => voice.name === e.target.value);
@@ -225,10 +386,7 @@ toggleModeButton.addEventListener('click', () => {
 // 단어 섞기
 shuffleButton.addEventListener('click', () => {
     const currentWords = [...wordList];
-    for (let i = currentWords.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [currentWords[i], currentWords[j]] = [currentWords[j], currentWords[i]];
-    }
+    shuffleArray(currentWords);
     wordList = currentWords;
     renderWordList();
 });
