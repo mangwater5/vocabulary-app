@@ -45,6 +45,14 @@ let currentTestMode = '';
 let isPlaying = false;
 let selectedVoice = null;
 
+// TTS 설정
+const ELEVEN_LABS_API_KEY = 'sk_9389a146973535bf1423d9664a6542d4369dd59badb6fa1c';
+const VOICES = {
+    'adam': {name: '미국 영어 (남)', voiceId: 'pNInz6obpgDQGcFmaJgB'}, // Adam
+    'rachel': {name: '미국 영어 (여)', voiceId: '21m00Tcm4TlvDq8ikWAM'}, // Rachel
+    'antoni': {name: '영국 영어 (남)', voiceId: 'ErXwobaYiN019PkySvjV'} // Antoni
+};
+
 // 로컬 스토리지에서 단어 불러오기
 function loadWords() {
     const savedWords = localStorage.getItem('words');
@@ -86,111 +94,80 @@ function deleteWord(index) {
 
 // 음성 목록 로드
 function loadVoices() {
-    const voices = speechSynthesis.getVoices();
-    console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`)); // 디버깅용
-
-    // 원하는 음성 이름 목록 (iOS/데스크탑 모두에서 일관되게 사용)
-    const preferredVoices = [
-        'Google US English',
-        'Microsoft David - English (United States)',
-        'Microsoft Mark - English (United States)',
-        'Microsoft Zira - English (United States)',
-        'Google UK English Female',
-        'Google UK English Male',
-        'Microsoft Susan - English (United Kingdom)',
-        'Microsoft Hazel - English (United Kingdom)'
-    ];
-
-    // 미국/영국 음성만 필터링하고, 선호하는 음성 우선 정렬
-    const filteredVoices = voices.filter(voice => 
-        (voice.lang === 'en-US' || voice.lang === 'en-GB') &&
-        (preferredVoices.includes(voice.name) || // 선호하는 음성이거나
-        voice.name.includes('Google') || // 구글 음성이거나
-        voice.name.includes('Microsoft')) // 마이크로소프트 음성인 경우만
-    );
-
-    // 음성이 하나도 없으면 기본 영어 음성 중에서 선택
-    if (filteredVoices.length === 0) {
-        const defaultVoices = voices.filter(voice => 
-            (voice.lang === 'en-US' || voice.lang === 'en-GB') &&
-            !voice.name.toLowerCase().includes('siri') // Siri 음성 제외
-        );
-        
-        if (defaultVoices.length > 0) {
-            selectedVoice = defaultVoices[0];
-            console.log('Using default voice:', selectedVoice.name);
-            return;
-        }
-    }
-
-    // 음성 목록 정렬
-    filteredVoices.sort((a, b) => {
-        // 선호하는 음성 순서대로 정렬
-        const indexA = preferredVoices.indexOf(a.name);
-        const indexB = preferredVoices.indexOf(b.name);
-        
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        if (indexA !== -1) return -1;
-        if (indexB !== -1) return 1;
-        
-        // 그 다음 미국 음성 우선
-        if (a.lang === 'en-US' && b.lang !== 'en-US') return -1;
-        if (a.lang !== 'en-US' && b.lang === 'en-US') return 1;
-        
-        return 0;
-    });
-
-    // select 요소 업데이트
     if (voiceSelect) {
-        voiceSelect.innerHTML = filteredVoices.map(voice => {
-            const label = voice.lang === 'en-US' ? '미국' : '영국';
-            const name = voice.name.replace(' - English (United States)', '')
-                                 .replace(' - English (United Kingdom)', '');
-            return `
-                <option value="${voice.name}">
-                    ${name} (${label})
-                </option>
-            `;
-        }).join('');
-
+        voiceSelect.innerHTML = Object.entries(VOICES).map(([id, voice]) => `
+            <option value="${id}">
+                ${voice.name}
+            </option>
+        `).join('');
+        
         // 기본 음성 설정
-        if (filteredVoices.length > 0) {
-            selectedVoice = filteredVoices[0];
-            voiceSelect.value = selectedVoice.name;
-            console.log('Selected voice:', selectedVoice.name);
+        selectedVoice = 'rachel'; // Rachel을 기본 음성으로
+        voiceSelect.value = selectedVoice;
+    }
+}
+
+// ElevenLabs TTS API를 사용한 음성 합성
+async function synthesizeSpeech(text, voiceId) {
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${VOICES[voiceId].voiceId}`;
+    
+    const data = {
+        text: text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0,
+            use_speaker_boost: true
         }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'xi-api-key': ELEVEN_LABS_API_KEY
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error('TTS API 요청 실패');
+        }
+
+        // 응답으로 받은 오디오 데이터를 재생
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        // 재생이 끝나면 URL 해제
+        audio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+        };
+        
+        audio.play();
+        
+    } catch (error) {
+        console.error('TTS 오류:', error);
+        // 오류 시 기본 TTS로 폴백
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        speechSynthesis.speak(utterance);
     }
 }
 
 // TTS 재생
-function speakWord(text) {
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // 선택된 음성이 없으면 기본 영어 음성 찾기
-    if (!selectedVoice) {
-        const voices = speechSynthesis.getVoices();
-        // 선호하는 음성 찾기
-        const defaultVoice = voices.find(voice => 
-            (voice.lang === 'en-US' || voice.lang === 'en-GB') &&
-            (voice.name.includes('Google') || voice.name.includes('Microsoft')) &&
-            !voice.name.toLowerCase().includes('siri')
-        );
-        
-        if (defaultVoice) {
-            selectedVoice = defaultVoice;
-            console.log('Default voice selected:', defaultVoice.name);
-        }
+async function speakWord(text) {
+    if (!ELEVEN_LABS_API_KEY) {
+        // API 키가 없으면 기본 TTS 사용
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        speechSynthesis.speak(utterance);
+        return;
     }
-    
-    if (selectedVoice) {
-        utterance.voice = selectedVoice;
-    }
-    
-    utterance.lang = selectedVoice ? selectedVoice.lang : 'en-US';
-    utterance.rate = 0.9; // 약간 천천히
-    utterance.pitch = 1;
-    
-    speechSynthesis.speak(utterance);
+
+    await synthesizeSpeech(text, selectedVoice);
 }
 
 // 단어 정렬
@@ -567,8 +544,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 스피킹 모드 이벤트
-    voiceSelect.addEventListener('change', e => {
-        selectedVoice = speechSynthesis.getVoices().find(voice => voice.name === e.target.value);
+    voiceSelect.addEventListener('change', (e) => {
+        selectedVoice = e.target.value;
     });
     practiceAllBtn.addEventListener('click', practiceAllWords);
     practiceRandomBtn.addEventListener('click', practiceRandomWord);
@@ -589,4 +566,12 @@ document.addEventListener('DOMContentLoaded', () => {
             loadVoices();
         }
     }, 1000);
+
+    // iOS에서 음성 재시도를 위한 추가 코드
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && !selectedVoice) {
+            console.log('Page visible, retrying voice loading...');
+            loadVoices();
+        }
+    });
 }); 
