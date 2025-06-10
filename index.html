@@ -3,6 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="description" content="나만의 스마트 영단어 학습 도우미">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <!-- iOS에서 필요한 메타 태그들 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="단어단어">
+=======
+>>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
     <title>단어단어</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -157,5 +168,21 @@
         </section>
     </div>
     <script src="script.js"></script>
+<<<<<<< HEAD
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker 등록 성공:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker 등록 실패:', error);
+                    });
+            });
+        }
+    </script>
+=======
+>>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
 </body>
 </html> 

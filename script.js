@@ -87,12 +87,33 @@ function deleteWord(index) {
 // TTS 재생
 function speakWord(text) {
     const utterance = new SpeechSynthesisUtterance(text);
+<<<<<<< HEAD
+    
+    // 선택된 음성이 없으면 기본 영어 음성 찾기
+    if (!selectedVoice) {
+        const voices = speechSynthesis.getVoices();
+        const defaultVoice = voices.find(voice => 
+            voice.lang === 'en-US' || voice.lang === 'en-GB'
+        );
+        if (defaultVoice) {
+            selectedVoice = defaultVoice;
+        }
+    }
+=======
     utterance.lang = 'en-US';
+>>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
     
     if (selectedVoice) {
         utterance.voice = selectedVoice;
     }
     
+<<<<<<< HEAD
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9; // 약간 천천히
+    utterance.pitch = 1;
+    
+=======
+>>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
     speechSynthesis.speak(utterance);
 }
 
@@ -371,24 +392,75 @@ function shuffleArray(array) {
 // 음성 목록 로드
 function loadVoices() {
     const voices = speechSynthesis.getVoices();
+<<<<<<< HEAD
+    
+    // 영어 음성만 필터링
+    const englishVoices = voices.filter(voice => 
+        voice.lang.startsWith('en-')
+    );
+
+    // 원어민 음성 우선 정렬 (US, UK 음성을 앞으로)
+    englishVoices.sort((a, b) => {
+        const isNativeA = a.lang === 'en-US' || a.lang === 'en-GB';
+        const isNativeB = b.lang === 'en-US' || b.lang === 'en-GB';
+        
+        if (isNativeA && !isNativeB) return -1;
+        if (!isNativeA && isNativeB) return 1;
+        return 0;
+    });
+    
+    voiceSelect.innerHTML = englishVoices.map(voice => `
+        <option value="${voice.name}" ${voice.lang === 'en-US' ? 'selected' : ''}>
+=======
     const englishVoices = voices.filter(voice => voice.lang.includes('en'));
     
     voiceSelect.innerHTML = englishVoices.map(voice => `
         <option value="${voice.name}">
+>>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
             ${voice.name} (${voice.lang})
         </option>
     `).join('');
 
     if (englishVoices.length > 0) {
+<<<<<<< HEAD
+        // 미국 영어 음성을 우선 선택
+        const usVoice = englishVoices.find(voice => voice.lang === 'en-US');
+        // 없으면 영국 영어 음성 선택
+        const gbVoice = englishVoices.find(voice => voice.lang === 'en-GB');
+        // 둘 다 없으면 첫 번째 영어 음성 선택
+        selectedVoice = usVoice || gbVoice || englishVoices[0];
+        
+        if (selectedVoice) {
+            voiceSelect.value = selectedVoice.name;
+        }
+    }
+}
+
+// 음성 목록이 로드되면 실행
+=======
         selectedVoice = englishVoices[0];
         voiceSelect.value = selectedVoice.name;
     }
 }
 
+>>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
 if (speechSynthesis.onvoiceschanged !== undefined) {
     speechSynthesis.onvoiceschanged = loadVoices;
 }
 
+<<<<<<< HEAD
+// 초기 음성 목록 로드 시도
+loadVoices();
+
+// 5초 후에도 음성이 없으면 다시 시도
+setTimeout(() => {
+    if (!selectedVoice) {
+        loadVoices();
+    }
+}, 5000);
+
+=======
+>>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
 // 섹션 전환
 function switchSection(targetSection) {
     sections.forEach(section => section.classList.remove('active'));
