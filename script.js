@@ -1,245 +1,173 @@
-// 단어장 데이터 저장소
-let wordList = JSON.parse(localStorage.getItem('wordList')) || [];
-let isStudyMode = false;
-let currentSortOrder = 'date';
+// DOM 요소
+const englishInput = document.getElementById('englishInput');
+const koreanInput = document.getElementById('koreanInput');
+const addWordBtn = document.getElementById('addWordBtn');
+const wordContainer = document.getElementById('wordContainer');
+const wordCount = document.getElementById('wordCount');
+const menuBtns = document.querySelectorAll('.menu-btn');
+const sections = document.querySelectorAll('.section');
+const memoryModeBtn = document.getElementById('memoryModeBtn');
+const sortLengthBtn = document.getElementById('sortLengthBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+
+// 시험 모드 요소
+const testOptions = document.querySelector('.test-options');
+const testArea = document.querySelector('.test-area');
+const resultBox = document.querySelector('.result-box');
+const questionElement = document.getElementById('question');
+const answerInput = document.getElementById('answer');
+const submitAnswerBtn = document.getElementById('submitAnswer');
+const listenAgainBtn = document.getElementById('listenAgainBtn');
+const progressElement = document.getElementById('progress');
+const progressFill = document.getElementById('progressFill');
+const correctCountElement = document.getElementById('correctCount');
+const totalCountElement = document.getElementById('totalCount');
+const wrongAnswersElement = document.getElementById('wrongAnswers');
+const retryWrongBtn = document.getElementById('retryWrongWords');
+const restartTestBtn = document.getElementById('restartTest');
+const backToOptionsBtn = document.getElementById('backToOptions');
+
+// 스피킹 모드 요소
+const speakingContainer = document.getElementById('speakingContainer');
+const voiceSelect = document.getElementById('voiceSelect');
+const practiceAllBtn = document.getElementById('practiceAll');
+const practiceRandomBtn = document.getElementById('practiceRandom');
+
+// 상태 변수
+let words = [];
+let isMemoryMode = false;
+let isLongToShort = true;
 let testWords = [];
 let currentTestIndex = 0;
 let correctAnswers = 0;
 let wrongAnswers = [];
 let currentTestMode = '';
 let isPlaying = false;
-let currentUtterance = null;
-
-// DOM 요소들을 상수로 정의
-const menuButtons = document.querySelectorAll('.menu-btn');
-const sections = document.querySelectorAll('.section');
-const englishInput = document.getElementById('englishWord');
-const koreanInput = document.getElementById('koreanWord');
-const addWordButton = document.getElementById('addWord');
-const wordContainer = document.getElementById('wordContainer');
-const speakingContainer = document.getElementById('speakingContainer');
-const searchInput = document.getElementById('searchWord');
-const toggleModeButton = document.getElementById('toggleMode');
-const shuffleButton = document.getElementById('shuffleWords');
-const sortByLengthAscButton = document.getElementById('sortByLengthAsc');
-const sortByLengthDescButton = document.getElementById('sortByLengthDesc');
-const wordCountSpan = document.getElementById('wordCount');
-const voiceSelect = document.getElementById('voiceSelect');
-const speechRateInput = document.getElementById('speechRate');
-const speechRateValue = document.getElementById('speechRateValue');
-const practiceAllButton = document.getElementById('practiceAll');
-const practiceRandomButton = document.getElementById('practiceRandom');
-
-// 시험 모드 요소들
-const testArea = document.querySelector('.test-area');
-const testOptions = document.querySelector('.test-options');
-const questionElement = document.getElementById('question');
-const answerInput = document.getElementById('answer');
-const submitAnswerButton = document.getElementById('submitAnswer');
-const progressElement = document.getElementById('progress');
-const progressFill = document.getElementById('progressFill');
-const listenAgainButton = document.getElementById('listenAgain');
-const resultBox = document.querySelector('.result-box');
-const correctCountElement = document.getElementById('correctCount');
-const totalCountElement = document.getElementById('totalCount');
-const wrongAnswersElement = document.getElementById('wrongAnswers');
-const retryWrongButton = document.getElementById('retryWrongWords');
-const restartTestButton = document.getElementById('restartTest');
-const backToOptionsButton = document.getElementById('backToOptions');
-
-// 음성 합성 초기화
-const synth = window.speechSynthesis;
-let voices = [];
 let selectedVoice = null;
-let speechRate = 1.0;
 
-// 음성 목록 로드 및 기본 영어 음성 설정
-function loadVoices() {
-    voices = synth.getVoices().filter(voice => voice.lang.includes('en'));
-    
-    // 음성 목록 업데이트
-    voiceSelect.innerHTML = voices.map(voice => 
-        `<option value="${voice.name}" ${voice.name.includes('Natural') ? 'selected' : ''}>
-            ${voice.name}
-        </option>`
-    ).join('');
-    
-    // 기본 음성을 자연스러운 영어 음성으로 설정
-    const naturalVoice = voices.find(voice => voice.name.includes('Natural'));
-    selectedVoice = naturalVoice || voices[0];
-    
-    if (selectedVoice) {
-        voiceSelect.value = selectedVoice.name;
+// 로컬 스토리지에서 단어 불러오기
+function loadWords() {
+    const savedWords = localStorage.getItem('words');
+    if (savedWords) {
+        words = JSON.parse(savedWords);
+        updateWordList();
+        renderSpeakingList();
     }
 }
 
-if (speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = loadVoices;
+// 단어 저장하기
+function saveWords() {
+    localStorage.setItem('words', JSON.stringify(words));
 }
 
-// 메뉴 전환 기능
-menuButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        const targetSection = button.dataset.section;
-        menuButtons.forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-        
-        sections.forEach(section => {
-            section.classList.remove('active');
-            if (section.id === targetSection) {
-                section.classList.add('active');
-            }
-        });
-
-        if (targetSection === 'speaking') {
-            renderSpeakingList();
-        }
-    });
-});
-
-// 단어 입력 이벤트 처리
-function setupWordInputEvents() {
-    englishInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            koreanInput.focus();
-        }
-    });
-
-    koreanInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addNewWord();
-        }
-    });
-
-    addWordButton.addEventListener('click', addNewWord);
-}
-
-// 단어 추가 기능
-function addNewWord() {
+// 단어 추가
+function addWord() {
     const english = englishInput.value.trim();
     const korean = koreanInput.value.trim();
 
-    if (!english || !korean) {
-        alert('영어 단어와 한글 뜻을 모두 입력해주세요.');
-        return;
+    if (english && korean) {
+        words.push({ english, korean });
+        saveWords();
+        updateWordList();
+        renderSpeakingList();
+        englishInput.value = '';
+        koreanInput.value = '';
+        englishInput.focus();
     }
+}
 
-    const wordData = {
-        id: Date.now(),
-        english: english,
-        korean: korean,
-        timestamp: Date.now()
-    };
-
-    wordList.push(wordData);
-    localStorage.setItem('wordList', JSON.stringify(wordList));
-    
-    englishInput.value = '';
-    koreanInput.value = '';
-    englishInput.focus();
-    
-    renderWordList();
+// 단어 삭제
+function deleteWord(index) {
+    words.splice(index, 1);
+    saveWords();
+    updateWordList();
     renderSpeakingList();
 }
 
-// 단어 목록 렌더링
-function renderWordList() {
-    const searchTerm = searchInput.value.toLowerCase();
-    let filteredWords = wordList.filter(word => 
-        word.english.toLowerCase().includes(searchTerm) || 
-        word.korean.includes(searchTerm)
-    );
-
-    switch (currentSortOrder) {
-        case 'lengthAsc':
-            filteredWords.sort((a, b) => a.english.length - b.english.length);
-            break;
-        case 'lengthDesc':
-            filteredWords.sort((a, b) => b.english.length - a.english.length);
-            break;
-        default:
-            filteredWords.sort((a, b) => b.timestamp - a.timestamp);
+// TTS 재생
+function speakWord(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    
+    if (selectedVoice) {
+        utterance.voice = selectedVoice;
     }
+    
+    speechSynthesis.speak(utterance);
+}
 
-    wordContainer.innerHTML = filteredWords.map(word => `
-        <div class="word-item${isStudyMode ? ' study-mode' : ''}">
+// 단어 정렬
+function sortWords() {
+    if (isLongToShort) {
+        words.sort((a, b) => b.english.length - a.english.length);
+    } else {
+        words.sort((a, b) => a.english.length - b.english.length);
+    }
+    updateWordList();
+}
+
+// 단어 랜덤 섞기
+function shuffleWords() {
+    for (let i = words.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [words[i], words[j]] = [words[j], words[i]];
+    }
+    updateWordList();
+}
+
+// 단어 목록 업데이트
+function updateWordList() {
+    wordContainer.innerHTML = '';
+    wordCount.textContent = `(${words.length}개)`;
+
+    words.forEach((word, index) => {
+        const wordItem = document.createElement('div');
+        wordItem.className = 'word-item';
+        wordItem.innerHTML = `
             <div class="word-text">
-                <span class="english">${word.english}</span>
-                <span class="korean">${word.korean}</span>
+                <span class="word-english">${word.english}</span>
+                <span class="word-korean ${isMemoryMode ? 'hidden' : ''}">${word.korean}</span>
             </div>
-            <div class="actions">
-                <button onclick="speakWord('${word.english}')" class="speak-btn" title="발음 듣기">
+            <div class="word-actions">
+                <button class="action-btn speak" onclick="speakWord('${word.english}')">
                     <i class="fas fa-volume-up"></i>
                 </button>
-                <button onclick="deleteWord(${word.id})" class="delete-btn" title="단어 삭제">
+                <button class="action-btn delete" onclick="deleteWord(${index})">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
-        </div>
-    `).join('');
-
-    wordCountSpan.textContent = `(${wordList.length}개)`;
+        `;
+        wordContainer.appendChild(wordItem);
+    });
 }
 
 // 스피킹 목록 렌더링
 function renderSpeakingList() {
     if (!speakingContainer) return;
 
-    speakingContainer.innerHTML = wordList.map(word => `
+    speakingContainer.innerHTML = words.map(word => `
         <div class="speak-item">
-            <div class="word-text">
-                <strong>${word.english}</strong> - ${word.korean}
+            <div class="word-info">
+                <span class="word-english">${word.english}</span>
+                <span class="word-divider">-</span>
+                <span class="word-korean">${word.korean}</span>
             </div>
-            <button onclick="speakWord('${word.english}')" class="speak-btn">
+            <button onclick="speakWord('${word.english}')" class="action-btn speak">
                 <i class="fas fa-volume-up"></i>
             </button>
         </div>
     `).join('');
 }
 
-// 단어 삭제
-function deleteWord(id) {
-    if (confirm('정말 이 단어를 삭제하시겠습니까?')) {
-        wordList = wordList.filter(word => word.id !== id);
-        localStorage.setItem('wordList', JSON.stringify(wordList));
-        renderWordList();
-        renderSpeakingList();
-    }
-}
-
-// 단어 발음
-function speakWord(text) {
-    if (synth.speaking) {
-        synth.cancel();
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = speechRate;
-    
-    if (selectedVoice) {
-        utterance.voice = selectedVoice;
-    }
-
-    utterance.onerror = (event) => {
-        console.error('음성 합성 오류:', event);
-        alert('음성 재생 중 오류가 발생했습니다.');
-    };
-
-    currentUtterance = utterance;
-    synth.speak(utterance);
-}
-
-// 시험 모드 시작
+// 시험 시작
 function startTest(mode) {
-    if (wordList.length === 0) {
+    if (words.length === 0) {
         alert('단어장에 단어를 먼저 추가해주세요!');
         return;
     }
 
     currentTestMode = mode;
-    testWords = [...wordList];
+    testWords = [...words];
     shuffleArray(testWords);
     currentTestIndex = 0;
     correctAnswers = 0;
@@ -266,27 +194,21 @@ function showNextQuestion() {
         switch (currentTestMode) {
             case 'KorToEng':
                 questionElement.textContent = word.korean;
-                listenAgainButton.style.display = 'none';
+                listenAgainBtn.style.display = 'none';
                 break;
             case 'EngToKor':
                 questionElement.textContent = word.english;
-                listenAgainButton.style.display = 'none';
+                listenAgainBtn.style.display = 'none';
                 break;
             case 'ListenToEng':
                 questionElement.textContent = '아래 버튼을 눌러 발음을 들어보세요';
-                listenAgainButton.style.display = 'block';
+                listenAgainBtn.style.display = 'block';
                 speakWord(word.english);
                 break;
         }
 
         answerInput.value = '';
         answerInput.focus();
-        
-        const feedback = document.getElementById('answerFeedback');
-        if (feedback) {
-            feedback.textContent = '';
-            feedback.className = 'answer-feedback';
-        }
     } else {
         showTestResult();
     }
@@ -320,6 +242,12 @@ function checkAnswer() {
             '정답입니다! 👍' : 
             `틀렸습니다. 정답은 "${correctAnswer}" 입니다.`;
         feedback.className = `answer-feedback ${isCorrect ? 'correct' : 'wrong'}`;
+
+        // 1초 후에 피드백 초기화
+        setTimeout(() => {
+            feedback.textContent = '';
+            feedback.className = 'answer-feedback';
+        }, 1000);
     }
 
     if (isCorrect) {
@@ -349,7 +277,7 @@ function showTestResult() {
 
     if (wrongAnswers.length === 0) {
         wrongAnswersElement.innerHTML = '<p class="perfect-score">축하합니다! 모든 문제를 맞추셨습니다! 🎉</p>';
-        retryWrongButton.style.display = 'none';
+        retryWrongBtn.style.display = 'none';
     } else {
         let wrongAnswersHtml = '<h4>틀린 단어 목록</h4>';
         wrongAnswers.forEach(wrong => {
@@ -363,28 +291,16 @@ function showTestResult() {
             `;
         });
         wrongAnswersElement.innerHTML = wrongAnswersHtml;
-        retryWrongButton.style.display = 'block';
+        retryWrongBtn.style.display = 'block';
     }
-
-    restartTestButton.style.display = 'block';
-    backToOptionsButton.style.display = 'block';
 }
 
 // 틀린 단어만 다시 보기
 function retryWrongWords() {
-    if (wrongAnswers.length === 0) {
-        alert('틀린 단어가 없습니다!');
-        return;
-    }
-
     testWords = wrongAnswers.map(wrong => {
-        const word = wordList.find(w => 
-            w.english === (currentTestMode === 'EngToKor' ? wrong.question : wrong.correctAnswer)
+        return words.find(word => 
+            word.english === (currentTestMode === 'EngToKor' ? wrong.question : wrong.correctAnswer)
         );
-        return word || {
-            english: currentTestMode === 'EngToKor' ? wrong.question : wrong.correctAnswer,
-            korean: currentTestMode === 'EngToKor' ? wrong.correctAnswer : wrong.question
-        };
     });
     
     currentTestIndex = 0;
@@ -400,45 +316,47 @@ function retryWrongWords() {
 function practiceAllWords() {
     if (isPlaying) {
         isPlaying = false;
-        synth.cancel();
-        practiceAllButton.innerHTML = '<i class="fas fa-play"></i> 전체 단어 재생';
+        speechSynthesis.cancel();
+        practiceAllBtn.innerHTML = '<i class="fas fa-play"></i> 전체 단어 재생';
+        practiceAllBtn.classList.remove('playing');
         return;
     }
 
-    if (wordList.length === 0) {
+    if (words.length === 0) {
         alert('단어장에 단어를 먼저 추가해주세요!');
         return;
     }
 
     isPlaying = true;
-    practiceAllButton.innerHTML = '<i class="fas fa-stop"></i> 재생 중단';
+    practiceAllBtn.innerHTML = '<i class="fas fa-stop"></i> 재생 중단';
+    practiceAllBtn.classList.add('playing');
     let index = 0;
 
-    const speakNext = () => {
-        if (!isPlaying || index >= wordList.length) {
+    function speakNext() {
+        if (!isPlaying || index >= words.length) {
             isPlaying = false;
-            practiceAllButton.innerHTML = '<i class="fas fa-play"></i> 전체 단어 재생';
+            practiceAllBtn.innerHTML = '<i class="fas fa-play"></i> 전체 단어 재생';
+            practiceAllBtn.classList.remove('playing');
             return;
         }
 
-        const word = wordList[index];
-        speakWord(word.english);
+        speakWord(words[index].english);
         index++;
         setTimeout(speakNext, 2000);
-    };
+    }
 
     speakNext();
 }
 
 // 랜덤 단어 재생
 function practiceRandomWord() {
-    if (wordList.length === 0) {
+    if (words.length === 0) {
         alert('단어장에 단어를 먼저 추가해주세요!');
         return;
     }
 
-    const randomIndex = Math.floor(Math.random() * wordList.length);
-    speakWord(wordList[randomIndex].english);
+    const randomIndex = Math.floor(Math.random() * words.length);
+    speakWord(words[randomIndex].english);
 }
 
 // 배열 섞기
@@ -447,92 +365,105 @@ function shuffleArray(array) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
     }
+    return array;
 }
 
-// 이벤트 리스너 설정
-function setupEventListeners() {
-    document.getElementById('startKorToEng').addEventListener('click', () => startTest('KorToEng'));
-    document.getElementById('startEngToKor').addEventListener('click', () => startTest('EngToKor'));
-    document.getElementById('startListenToEng').addEventListener('click', () => startTest('ListenToEng'));
+// 음성 목록 로드
+function loadVoices() {
+    const voices = speechSynthesis.getVoices();
+    const englishVoices = voices.filter(voice => voice.lang.includes('en'));
     
-    submitAnswerButton.addEventListener('click', checkAnswer);
-    answerInput.addEventListener('keypress', e => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            checkAnswer();
-        }
-    });
+    voiceSelect.innerHTML = englishVoices.map(voice => `
+        <option value="${voice.name}">
+            ${voice.name} (${voice.lang})
+        </option>
+    `).join('');
 
-    listenAgainButton.addEventListener('click', () => {
-        const currentWord = testWords[currentTestIndex];
-        speakWord(currentWord.english);
-    });
-
-    retryWrongButton.addEventListener('click', retryWrongWords);
-    restartTestButton.addEventListener('click', () => startTest(currentTestMode));
-    backToOptionsButton.addEventListener('click', () => {
-        testArea.style.display = 'none';
-        resultBox.style.display = 'none';
-        testOptions.style.display = 'block';
-    });
-
-    practiceAllButton.addEventListener('click', practiceAllWords);
-    practiceRandomButton.addEventListener('click', practiceRandomWord);
-
-    voiceSelect.addEventListener('change', (e) => {
-        selectedVoice = voices.find(voice => voice.name === e.target.value);
-    });
-
-    speechRateInput.addEventListener('input', (e) => {
-        speechRate = parseFloat(e.target.value);
-        speechRateValue.textContent = speechRate.toFixed(1);
-    });
-
-    searchInput.addEventListener('input', renderWordList);
-
-    sortByLengthAscButton.addEventListener('click', () => {
-        currentSortOrder = 'lengthAsc';
-        renderWordList();
-    });
-
-    sortByLengthDescButton.addEventListener('click', () => {
-        currentSortOrder = 'lengthDesc';
-        renderWordList();
-    });
-
-    toggleModeButton.addEventListener('click', () => {
-        isStudyMode = !isStudyMode;
-        toggleModeButton.textContent = isStudyMode ? '일반 모드로 전환' : '학습 모드로 전환';
-        document.body.classList.toggle('study-mode', isStudyMode);
-        renderWordList();
-    });
-
-    shuffleButton.addEventListener('click', () => {
-        shuffleArray(wordList);
-        renderWordList();
-    });
+    if (englishVoices.length > 0) {
+        selectedVoice = englishVoices[0];
+        voiceSelect.value = selectedVoice.name;
+    }
 }
 
-// 모바일 키보드 대응
-function setupMobileKeyboard() {
-    const inputs = document.querySelectorAll('input[type="text"]');
-    inputs.forEach(input => {
-        input.addEventListener('focus', () => {
-            setTimeout(() => {
-                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 300);
-        });
+if (speechSynthesis.onvoiceschanged !== undefined) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+// 섹션 전환
+function switchSection(targetSection) {
+    sections.forEach(section => section.classList.remove('active'));
+    menuBtns.forEach(btn => btn.classList.remove('active'));
+
+    document.getElementById(targetSection).classList.add('active');
+    document.querySelector(`[data-section="${targetSection}"]`).classList.add('active');
+
+    if (targetSection === 'speaking') {
+        renderSpeakingList();
+    }
+}
+
+// 이벤트 리스너
+addWordBtn.addEventListener('click', addWord);
+englishInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter') koreanInput.focus();
+});
+koreanInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter') addWord();
+});
+
+menuBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        switchSection(btn.dataset.section);
     });
-}
+});
 
-// 초기화 함수
-function initialize() {
-    setupWordInputEvents();
-    setupEventListeners();
-    setupMobileKeyboard();
-    renderWordList();
-    renderSpeakingList();
-}
+memoryModeBtn.addEventListener('click', () => {
+    isMemoryMode = !isMemoryMode;
+    memoryModeBtn.classList.toggle('active');
+    updateWordList();
+});
 
-// 앱 시작
-initialize(); 
+sortLengthBtn.addEventListener('click', () => {
+    isLongToShort = !isLongToShort;
+    sortLengthBtn.innerHTML = `
+        <i class="fas fa-sort-amount-${isLongToShort ? 'down' : 'up'}"></i>
+        ${isLongToShort ? '긴 단어순' : '짧은 단어순'}
+    `;
+    sortWords();
+});
+
+shuffleBtn.addEventListener('click', shuffleWords);
+
+// 시험 모드 이벤트 리스너
+document.getElementById('startKorToEng').addEventListener('click', () => startTest('KorToEng'));
+document.getElementById('startEngToKor').addEventListener('click', () => startTest('EngToKor'));
+document.getElementById('startListenToEng').addEventListener('click', () => startTest('ListenToEng'));
+
+submitAnswerBtn.addEventListener('click', checkAnswer);
+answerInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter') checkAnswer();
+});
+
+listenAgainBtn.addEventListener('click', () => {
+    const currentWord = testWords[currentTestIndex];
+    speakWord(currentWord.english);
+});
+
+retryWrongBtn.addEventListener('click', retryWrongWords);
+restartTestBtn.addEventListener('click', () => startTest(currentTestMode));
+backToOptionsBtn.addEventListener('click', () => {
+    testArea.style.display = 'none';
+    resultBox.style.display = 'none';
+    testOptions.style.display = 'block';
+});
+
+// 스피킹 모드 이벤트 리스너
+voiceSelect.addEventListener('change', e => {
+    selectedVoice = speechSynthesis.getVoices().find(voice => voice.name === e.target.value);
+});
+
+practiceAllBtn.addEventListener('click', practiceAllWords);
+practiceRandomBtn.addEventListener('click', practiceRandomWord);
+
+// 초기화
+loadWords(); 
