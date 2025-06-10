@@ -53,6 +53,14 @@ const VOICES = {
     'antoni': {name: '영국 영어 (남)', voiceId: 'ErXwobaYiN019PkySvjV'} // Antoni
 };
 
+// 음성 캐시 저장소
+const audioCache = new Map();
+
+// 캐시 키 생성 함수
+function getCacheKey(text, voiceId) {
+    return `${text}_${voiceId}`;
+}
+
 // 로컬 스토리지에서 단어 불러오기
 function loadWords() {
     const savedWords = localStorage.getItem('words');
@@ -109,14 +117,23 @@ function loadVoices() {
 
 // ElevenLabs TTS API를 사용한 음성 합성
 async function synthesizeSpeech(text, voiceId) {
+    const cacheKey = getCacheKey(text, voiceId);
+    
+    // 캐시된 음성이 있으면 재사용
+    if (audioCache.has(cacheKey)) {
+        const cachedAudio = audioCache.get(cacheKey);
+        cachedAudio.currentTime = 0; // 재생 위치 초기화
+        return cachedAudio.play();
+    }
+
     const url = `https://api.elevenlabs.io/v1/text-to-speech/${VOICES[voiceId].voiceId}`;
     
     const data = {
         text: text,
         model_id: 'eleven_monolingual_v1',
         voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
+            stability: 0.8, // 안정성 증가
+            similarity_boost: 0.8, // 일관성 증가
             style: 0,
             use_speaker_boost: true
         }
@@ -141,12 +158,16 @@ async function synthesizeSpeech(text, voiceId) {
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         
-        // 재생이 끝나면 URL 해제
-        audio.onended = () => {
+        // 캐시에 저장
+        audioCache.set(cacheKey, audio);
+        
+        // 메모리 관리를 위한 이벤트 핸들러
+        audio.onerror = () => {
             URL.revokeObjectURL(audioUrl);
+            audioCache.delete(cacheKey);
         };
         
-        audio.play();
+        return audio.play();
         
     } catch (error) {
         console.error('TTS 오류:', error);
@@ -468,6 +489,16 @@ function switchSection(targetSection) {
         }
     } else {
         console.error('Target section or button not found:', targetSection); // 디버깅용 로그
+    }
+}
+
+// 캐시 정리 함수 (메모리 관리)
+function clearOldCache() {
+    if (audioCache.size > 100) { // 캐시 크기 제한
+        const oldestKey = audioCache.keys().next().value;
+        const audio = audioCache.get(oldestKey);
+        URL.revokeObjectURL(audio.src);
+        audioCache.delete(oldestKey);
     }
 }
 
