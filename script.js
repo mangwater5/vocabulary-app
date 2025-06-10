@@ -44,6 +44,10 @@ let wrongAnswers = [];
 let currentTestMode = '';
 let isPlaying = false;
 let selectedVoice = null;
+let correctWords = [];
+let currentWordIndex = 0;
+let correctCount = 0;
+let totalCount = 0;
 
 // TTS 설정
 const ELEVEN_LABS_API_KEY = 'sk_9389a146973535bf1423d9664a6542d4369dd59badb6fa1c';
@@ -93,8 +97,8 @@ function addWord() {
 }
 
 // 단어 삭제
-function deleteWord(index) {
-    words.splice(index, 1);
+function deleteWord(english) {
+    words = words.filter(word => word.english !== english);
     saveWords();
     updateWordList();
     renderSpeakingList();
@@ -215,7 +219,7 @@ function updateWordList() {
     wordContainer.innerHTML = '';
     wordCount.textContent = `(${words.length}개)`;
 
-    words.forEach((word, index) => {
+    words.forEach(word => {
         const wordItem = document.createElement('div');
         wordItem.className = 'word-item';
         wordItem.innerHTML = `
@@ -227,13 +231,16 @@ function updateWordList() {
                 <button class="action-btn speak" onclick="speakWord('${word.english}')">
                     <i class="fas fa-volume-up"></i>
                 </button>
-                <button class="action-btn delete" onclick="deleteWord(${index})">
+                <button class="action-btn delete" onclick="deleteWord('${word.english}')">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
         `;
         wordContainer.appendChild(wordItem);
     });
+
+    // 스피킹 목록도 업데이트
+    renderSpeakingList();
 }
 
 // 스피킹 목록 렌더링
@@ -261,150 +268,197 @@ function startTest(mode) {
         return;
     }
 
-    currentTestMode = mode;
     testWords = [...words];
-    shuffleArray(testWords);
-    currentTestIndex = 0;
-    correctAnswers = 0;
     wrongAnswers = [];
+    correctWords = [];
+    currentWordIndex = 0;
+    correctCount = 0;
+    totalCount = testWords.length;
+    currentTestMode = mode;
+    
+    // 단어 섞기
+    shuffleArray(testWords);
+    
+    // UI 업데이트
+    const testOptions = document.querySelector('.test-options');
+    const testArea = document.querySelector('.test-area');
+    const resultBox = document.querySelector('.result-box');
 
     testOptions.style.display = 'none';
     testArea.style.display = 'block';
     resultBox.style.display = 'none';
-    answerInput.value = '';
     
-    showNextQuestion();
+    document.getElementById('answer').value = '';
+    updateTestUI();
 }
 
-// 다음 문제 표시
-function showNextQuestion() {
-    if (currentTestIndex < testWords.length) {
-        const word = testWords[currentTestIndex];
-        
-        // 진행 상태 업데이트
-        progressElement.textContent = `${currentTestIndex + 1} / ${testWords.length}`;
-        progressFill.style.width = `${((currentTestIndex + 1) / testWords.length) * 100}%`;
+// UI 업데이트
+function updateTestUI() {
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progress');
+    const questionText = document.querySelector('#question');
+    const listenAgainBtn = document.getElementById('listenAgainBtn');
+    
+    // 진행률 업데이트
+    const progress = (currentWordIndex / totalCount) * 100;
+    progressFill.style.width = `${progress}%`;
+    progressText.textContent = `${currentWordIndex} / ${totalCount}`;
+    
+    // 현재 단어
+    const currentWord = testWords[currentWordIndex];
+    
+    // 문제 표시
+    if (currentTestMode === 'korToEng') {
+        questionText.textContent = currentWord.korean;
+        listenAgainBtn.style.display = 'none';
+    } else if (currentTestMode === 'engToKor') {
+        questionText.textContent = currentWord.english;
+        listenAgainBtn.style.display = 'none';
+    } else if (currentTestMode === 'listenToEng') {
+        questionText.textContent = '들은 단어를 입력하세요';
+        listenAgainBtn.style.display = 'inline-block';
+        speakWord(currentWord.english);
+    }
+    
+    // 답안 입력 필드에 포커스
+    document.getElementById('answer').focus();
+}
 
-        // 문제 유형에 따른 표시
-        switch (currentTestMode) {
-            case 'KorToEng':
-                questionElement.textContent = word.korean;
-                listenAgainBtn.style.display = 'none';
-                break;
-            case 'EngToKor':
-                questionElement.textContent = word.english;
-                listenAgainBtn.style.display = 'none';
-                break;
-            case 'ListenToEng':
-                questionElement.textContent = '아래 버튼을 눌러 발음을 들어보세요';
-                listenAgainBtn.style.display = 'block';
-                speakWord(word.english);
-                break;
+// 답안 제출
+function submitAnswer() {
+    const answer = document.getElementById('answer').value.trim().toLowerCase();
+    const currentWord = testWords[currentWordIndex];
+    const answerFeedback = document.getElementById('answerFeedback');
+    
+    let isCorrect = false;
+    
+    if (currentTestMode === 'korToEng') {
+        if (answer === currentWord.english.toLowerCase()) {
+            isCorrect = true;
         }
-
-        answerInput.value = '';
-        answerInput.focus();
+    } else if (currentTestMode === 'engToKor') {
+        if (answer === currentWord.korean) {
+            isCorrect = true;
+        }
+    } else if (currentTestMode === 'listenToEng') {
+        if (answer === currentWord.english.toLowerCase()) {
+            isCorrect = true;
+        }
+    }
+    
+    if (isCorrect) {
+        correctCount++;
+        correctWords.push(currentWord);
+        // 피드백 표시
+        showFeedback('정답입니다!', true);
+    } else {
+        wrongAnswers.push({
+            question: currentWord.english,
+            correctAnswer: currentWord.korean,
+            userAnswer: answer
+        });
+        // 피드백 표시
+        showFeedback('틀렸습니다.', false);
+    }
+    
+    document.getElementById('answer').value = '';
+    currentWordIndex++;
+    
+    if (currentWordIndex < testWords.length) {
+        updateTestUI();
     } else {
         showTestResult();
     }
 }
 
-// 답안 체크
-function checkAnswer() {
-    const currentWord = testWords[currentTestIndex];
-    const userAnswer = answerInput.value.trim();
-    let correctAnswer;
+// 피드백 표시 함수
+function showFeedback(message, isCorrect) {
+    const answerFeedback = document.getElementById('answerFeedback');
+    answerFeedback.textContent = message;
+    answerFeedback.style.color = isCorrect ? '#4CAF50' : '#ff5252';
+    answerFeedback.style.display = 'block';
     
-    switch (currentTestMode) {
-        case 'KorToEng':
-        case 'ListenToEng':
-            correctAnswer = currentWord.english;
-            break;
-        case 'EngToKor':
-            correctAnswer = currentWord.korean;
-            break;
-    }
-
-    const normalizeAnswer = (text) => {
-        return text.toLowerCase().replace(/\s+/g, ' ').trim();
-    };
-
-    const isCorrect = normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer);
-    
-    const feedback = document.getElementById('answerFeedback');
-    if (feedback) {
-        feedback.textContent = isCorrect ? 
-            '정답입니다! 👍' : 
-            `틀렸습니다. 정답은 "${correctAnswer}" 입니다.`;
-        feedback.className = `answer-feedback ${isCorrect ? 'correct' : 'wrong'}`;
-
-        // 1초 후에 피드백 초기화
-        setTimeout(() => {
-            feedback.textContent = '';
-            feedback.className = 'answer-feedback';
-        }, 1000);
-    }
-
-    if (isCorrect) {
-        correctAnswers++;
-    } else {
-        wrongAnswers.push({
-            question: currentTestMode === 'EngToKor' ? currentWord.english : currentWord.korean,
-            correctAnswer: correctAnswer,
-            userAnswer: userAnswer
-        });
-    }
-
-    // 1초 후 다음 문제로
+    // 0.7초 후에 피드백 숨기기
     setTimeout(() => {
-        currentTestIndex++;
-        showNextQuestion();
-    }, 1000);
+        answerFeedback.style.display = 'none';
+    }, 700);
 }
 
 // 시험 결과 표시
 function showTestResult() {
+    const testArea = document.querySelector('.test-area');
+    const resultBox = document.querySelector('.result-box');
+    
     testArea.style.display = 'none';
     resultBox.style.display = 'block';
 
-    correctCountElement.textContent = correctAnswers;
-    totalCountElement.textContent = testWords.length;
-
-    if (wrongAnswers.length === 0) {
-        wrongAnswersElement.innerHTML = '<p class="perfect-score">축하합니다! 모든 문제를 맞추셨습니다! 🎉</p>';
-        retryWrongBtn.style.display = 'none';
-    } else {
-        let wrongAnswersHtml = '<h4>틀린 단어 목록</h4>';
-        wrongAnswers.forEach(wrong => {
-            wrongAnswersHtml += `
-                <div class="wrong-item">
-                    <span class="question">${wrong.question}</span>
-                    <span class="arrow">→</span>
-                    <span class="correct">${wrong.correctAnswer}</span>
-                    <span class="user-answer">(입력: ${wrong.userAnswer})</span>
-                </div>
-            `;
-        });
-        wrongAnswersElement.innerHTML = wrongAnswersHtml;
-        retryWrongBtn.style.display = 'block';
-    }
+    updateResultDisplay();
 }
 
-// 틀린 단어만 다시 보기
-function retryWrongWords() {
-    testWords = wrongAnswers.map(wrong => {
-        return words.find(word => 
-            word.english === (currentTestMode === 'EngToKor' ? wrong.question : wrong.correctAnswer)
-        );
+// 결과 화면 업데이트
+function updateResultDisplay() {
+    const correctList = document.getElementById('correctList');
+    const wrongList = document.getElementById('wrongList');
+    const resultScore = document.getElementById('resultScore');
+    
+    // 점수 표시
+    resultScore.textContent = `${correctCount}/${totalCount}`;
+    
+    // 맞은 단어 목록
+    correctList.innerHTML = '';
+    correctWords.forEach((word, index) => {
+        const li = document.createElement('li');
+        li.className = 'result-item';
+        li.innerHTML = `
+            <div class="word-info">
+                <span class="word-text">${word.english}</span>
+                <span class="word-meaning">${word.korean}</span>
+            </div>
+            <button class="delete-btn" onclick="deleteCorrectWord(${index})">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        correctList.appendChild(li);
     });
     
-    currentTestIndex = 0;
-    correctAnswers = 0;
-    wrongAnswers = [];
+    // 틀린 단어 목록
+    wrongList.innerHTML = '';
+    wrongAnswers.forEach(answer => {
+        const li = document.createElement('li');
+        li.className = 'result-item';
+        li.innerHTML = `
+            <div class="word-info">
+                <span class="word-text">${answer.question}</span>
+                <span class="word-meaning">${answer.correctAnswer}</span>
+                <span class="user-answer">${answer.userAnswer}</span>
+                </div>
+            `;
+        wrongList.appendChild(li);
+    });
+}
+
+// 맞은 단어 삭제
+function deleteCorrectWord(index) {
+    const wordToDelete = correctWords[index];
     
-    testArea.style.display = 'block';
-    resultBox.style.display = 'none';
-    showNextQuestion();
+    // correctWords 배열에서 삭제
+    correctWords.splice(index, 1);
+    
+    // words 배열(단어장)에서도 삭제
+    const wordIndex = words.findIndex(word => 
+        word.english === wordToDelete.english && 
+        word.korean === wordToDelete.korean
+    );
+    if (wordIndex !== -1) {
+        words.splice(wordIndex, 1);
+        // 로컬 스토리지 업데이트
+        saveWords();
+        // 단어장 UI 업데이트
+        updateWordList();
+    }
+    
+    // 결과 화면 업데이트
+    updateResultDisplay();
 }
 
 // 전체 단어 재생
@@ -502,6 +556,28 @@ function clearOldCache() {
     }
 }
 
+// 틀린 단어로 재시험
+function retryWrongWords() {
+    testWords = wrongAnswers.map(wrong => ({
+        english: wrong.question,
+        korean: wrong.correctAnswer
+    }));
+    
+    currentWordIndex = 0;
+    correctCount = 0;
+    totalCount = testWords.length;
+    wrongAnswers = [];
+    correctWords = [];
+    
+    const testArea = document.querySelector('.test-area');
+    const resultBox = document.querySelector('.result-box');
+    
+    testArea.style.display = 'block';
+    resultBox.style.display = 'none';
+    
+    updateTestUI();
+}
+
 // 이벤트 리스너
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM Content Loaded'); // 디버깅용 로그
@@ -544,26 +620,17 @@ document.addEventListener('DOMContentLoaded', () => {
     shuffleBtn.addEventListener('click', shuffleWords);
 
     // 시험 모드 이벤트
-    document.getElementById('startKorToEng').addEventListener('click', () => {
-        console.log('Starting KorToEng test'); // 디버깅용 로그
-        startTest('KorToEng');
-    });
-    document.getElementById('startEngToKor').addEventListener('click', () => {
-        console.log('Starting EngToKor test'); // 디버깅용 로그
-        startTest('EngToKor');
-    });
-    document.getElementById('startListenToEng').addEventListener('click', () => {
-        console.log('Starting ListenToEng test'); // 디버깅용 로그
-        startTest('ListenToEng');
-    });
+    document.getElementById('startKorToEng').addEventListener('click', () => startTest('korToEng'));
+    document.getElementById('startEngToKor').addEventListener('click', () => startTest('engToKor'));
+    document.getElementById('startListenToEng').addEventListener('click', () => startTest('listenToEng'));
 
     // 시험 관련 이벤트
-    submitAnswerBtn.addEventListener('click', checkAnswer);
+    submitAnswerBtn.addEventListener('click', submitAnswer);
     answerInput.addEventListener('keypress', e => {
-        if (e.key === 'Enter') checkAnswer();
+        if (e.key === 'Enter') submitAnswer();
     });
     listenAgainBtn.addEventListener('click', () => {
-        const currentWord = testWords[currentTestIndex];
+        const currentWord = testWords[currentWordIndex];
         speakWord(currentWord.english);
     });
     retryWrongBtn.addEventListener('click', retryWrongWords);
@@ -591,7 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 1초 후에도 음성이 없으면 다시 시도 (iOS에서 필요)
-    setTimeout(() => {
+            setTimeout(() => {
         if (!selectedVoice) {
             console.log('Retrying voice loading...');
             loadVoices();

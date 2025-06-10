@@ -135,10 +135,20 @@
 
             <div class="result-box" style="display: none;">
                 <h3>시험 결과</h3>
-                <div class="score">
-                    <span id="correctCount">0</span> / <span id="totalCount">0</span>
+                <div id="resultScore" class="score"></div>
+                
+                <div class="result-section">
+                    <div class="result-list correct-list">
+                        <h4>맞은 단어</h4>
+                        <ul id="correctList"></ul>
+                    </div>
+                    
+                    <div class="result-list wrong-list">
+                        <h4>틀린 단어</h4>
+                        <ul id="wrongList"></ul>
+                    </div>
                 </div>
-                <div id="wrongAnswers"></div>
+
                 <div class="result-buttons">
                     <button id="retryWrongWords" class="test-btn">
                         <i class="fas fa-redo"></i>
@@ -194,4 +204,5 @@
         }
     </script>
 </body>
+</html> 
 </html> 
