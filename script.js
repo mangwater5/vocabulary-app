@@ -84,6 +84,84 @@ function deleteWord(index) {
     renderSpeakingList();
 }
 
+// 음성 목록 로드
+function loadVoices() {
+    const voices = speechSynthesis.getVoices();
+    console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`)); // 디버깅용
+
+    // 원하는 음성 이름 목록 (iOS/데스크탑 모두에서 일관되게 사용)
+    const preferredVoices = [
+        'Google US English',
+        'Microsoft David - English (United States)',
+        'Microsoft Mark - English (United States)',
+        'Microsoft Zira - English (United States)',
+        'Google UK English Female',
+        'Google UK English Male',
+        'Microsoft Susan - English (United Kingdom)',
+        'Microsoft Hazel - English (United Kingdom)'
+    ];
+
+    // 미국/영국 음성만 필터링하고, 선호하는 음성 우선 정렬
+    const filteredVoices = voices.filter(voice => 
+        (voice.lang === 'en-US' || voice.lang === 'en-GB') &&
+        (preferredVoices.includes(voice.name) || // 선호하는 음성이거나
+        voice.name.includes('Google') || // 구글 음성이거나
+        voice.name.includes('Microsoft')) // 마이크로소프트 음성인 경우만
+    );
+
+    // 음성이 하나도 없으면 기본 영어 음성 중에서 선택
+    if (filteredVoices.length === 0) {
+        const defaultVoices = voices.filter(voice => 
+            (voice.lang === 'en-US' || voice.lang === 'en-GB') &&
+            !voice.name.toLowerCase().includes('siri') // Siri 음성 제외
+        );
+        
+        if (defaultVoices.length > 0) {
+            selectedVoice = defaultVoices[0];
+            console.log('Using default voice:', selectedVoice.name);
+            return;
+        }
+    }
+
+    // 음성 목록 정렬
+    filteredVoices.sort((a, b) => {
+        // 선호하는 음성 순서대로 정렬
+        const indexA = preferredVoices.indexOf(a.name);
+        const indexB = preferredVoices.indexOf(b.name);
+        
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        
+        // 그 다음 미국 음성 우선
+        if (a.lang === 'en-US' && b.lang !== 'en-US') return -1;
+        if (a.lang !== 'en-US' && b.lang === 'en-US') return 1;
+        
+        return 0;
+    });
+
+    // select 요소 업데이트
+    if (voiceSelect) {
+        voiceSelect.innerHTML = filteredVoices.map(voice => {
+            const label = voice.lang === 'en-US' ? '미국' : '영국';
+            const name = voice.name.replace(' - English (United States)', '')
+                                 .replace(' - English (United Kingdom)', '');
+            return `
+                <option value="${voice.name}">
+                    ${name} (${label})
+                </option>
+            `;
+        }).join('');
+
+        // 기본 음성 설정
+        if (filteredVoices.length > 0) {
+            selectedVoice = filteredVoices[0];
+            voiceSelect.value = selectedVoice.name;
+            console.log('Selected voice:', selectedVoice.name);
+        }
+    }
+}
+
 // TTS 재생
 function speakWord(text) {
     const utterance = new SpeechSynthesisUtterance(text);
@@ -91,11 +169,16 @@ function speakWord(text) {
     // 선택된 음성이 없으면 기본 영어 음성 찾기
     if (!selectedVoice) {
         const voices = speechSynthesis.getVoices();
+        // 선호하는 음성 찾기
         const defaultVoice = voices.find(voice => 
-            voice.lang === 'en-US' || voice.lang === 'en-GB'
+            (voice.lang === 'en-US' || voice.lang === 'en-GB') &&
+            (voice.name.includes('Google') || voice.name.includes('Microsoft')) &&
+            !voice.name.toLowerCase().includes('siri')
         );
+        
         if (defaultVoice) {
             selectedVoice = defaultVoice;
+            console.log('Default voice selected:', defaultVoice.name);
         }
     }
     
@@ -103,7 +186,7 @@ function speakWord(text) {
         utterance.voice = selectedVoice;
     }
     
-    utterance.lang = 'en-US';
+    utterance.lang = selectedVoice ? selectedVoice.lang : 'en-US';
     utterance.rate = 0.9; // 약간 천천히
     utterance.pitch = 1;
     
@@ -382,28 +465,6 @@ function shuffleArray(array) {
     return array;
 }
 
-// 음성 목록 로드
-function loadVoices() {
-    const voices = speechSynthesis.getVoices();
-    const englishVoices = voices.filter(voice => voice.lang.includes('en'));
-    
-    voiceSelect.innerHTML = englishVoices.map(voice => `
-        <option value="${voice.name}">
-            ${voice.name} (${voice.lang})
-        </option>
-    `).join('');
-
-    if (englishVoices.length > 0) {
-        selectedVoice = englishVoices[0];
-        voiceSelect.value = selectedVoice.name;
-    }
-}
-
-// 음성 목록이 로드되면 실행
-if (speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = loadVoices;
-}
-
 // 섹션 전환
 function switchSection(targetSection) {
     console.log('Switching to section:', targetSection); // 디버깅용 로그
@@ -515,4 +576,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // 초기 데이터 로드
     loadWords();
     loadVoices();
+
+    // 음성 목록이 로드되면 실행
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    // 1초 후에도 음성이 없으면 다시 시도 (iOS에서 필요)
+    setTimeout(() => {
+        if (!selectedVoice) {
+            console.log('Retrying voice loading...');
+            loadVoices();
+        }
+    }, 1000);
 }); 
