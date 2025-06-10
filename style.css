@@ -34,26 +34,22 @@ nav {
 .menu-btn {
     padding: 10px 20px;
     border: none;
-    border-radius: 8px;
-    background: #e0e0e0;
+    background: none;
     color: #666;
     cursor: pointer;
-    transition: all 0.2s;
-    font-size: clamp(14px, 3vw, 16px);
+    font-size: 16px;
+    transition: color 0.3s;
 }
 
 .menu-btn.active {
-    background: #4CAF50;
-    color: white;
+    color: #4CAF50;
+    font-weight: bold;
+    border-bottom: 2px solid #4CAF50;
 }
 
 /* 섹션 */
 .section {
     display: none;
-    background: white;
-    padding: clamp(15px, 3vw, 20px);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .section.active {
@@ -290,35 +286,35 @@ nav {
 
 /* 시험 모드 */
 .test-options {
+    padding: 20px;
     text-align: center;
-    padding: clamp(15px, 3vw, 20px);
 }
 
 .test-buttons {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    margin-top: 20px;
+    gap: 10px;
+    max-width: 300px;
+    margin: 0 auto;
 }
 
 .test-btn {
-    padding: 16px 24px;
+    padding: 15px;
     border: none;
-    border-radius: 8px;
-    background: #4CAF50;
+    border-radius: 5px;
+    background-color: #4CAF50;
     color: white;
-    font-size: clamp(14px, 3vw, 16px);
     cursor: pointer;
+    font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
+    gap: 10px;
+    transition: background-color 0.3s;
 }
 
 .test-btn:hover {
-    background: #43a047;
-    transform: translateY(-1px);
+    background-color: #45a049;
 }
 
 .progress-bar {
@@ -491,14 +487,16 @@ nav {
 
 /* 스피킹 모드 */
 .speaking-controls {
-    margin-bottom: 24px;
-    padding: clamp(15px, 3vw, 20px);
-    background: #f8f9fa;
-    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .voice-select-box {
-    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .voice-select-box label {
@@ -518,39 +516,24 @@ nav {
 
 .practice-controls {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-@media (min-width: 768px) {
-    .practice-controls {
-        flex-direction: row;
-    }
+    gap: 10px;
 }
 
 .practice-btn {
-    flex: 1;
-    padding: 12px;
+    padding: 10px 20px;
     border: none;
-    border-radius: 8px;
-    background: #4CAF50;
+    border-radius: 5px;
+    background-color: #4CAF50;
     color: white;
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
-    font-size: clamp(14px, 3vw, 16px);
+    gap: 5px;
+    transition: background-color 0.3s;
 }
 
 .practice-btn:hover {
-    background: #43a047;
-    transform: translateY(-1px);
-}
-
-.practice-btn.playing {
-    background: #f44336;
+    background-color: #45a049;
 }
 
 .speaking-list {

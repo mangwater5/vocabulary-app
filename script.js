@@ -87,7 +87,6 @@ function deleteWord(index) {
 // TTS 재생
 function speakWord(text) {
     const utterance = new SpeechSynthesisUtterance(text);
-<<<<<<< HEAD
     
     // 선택된 음성이 없으면 기본 영어 음성 찾기
     if (!selectedVoice) {
@@ -99,21 +98,15 @@ function speakWord(text) {
             selectedVoice = defaultVoice;
         }
     }
-=======
-    utterance.lang = 'en-US';
->>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
     
     if (selectedVoice) {
         utterance.voice = selectedVoice;
     }
     
-<<<<<<< HEAD
     utterance.lang = 'en-US';
     utterance.rate = 0.9; // 약간 천천히
     utterance.pitch = 1;
     
-=======
->>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
     speechSynthesis.speak(utterance);
 }
 
@@ -392,150 +385,134 @@ function shuffleArray(array) {
 // 음성 목록 로드
 function loadVoices() {
     const voices = speechSynthesis.getVoices();
-<<<<<<< HEAD
-    
-    // 영어 음성만 필터링
-    const englishVoices = voices.filter(voice => 
-        voice.lang.startsWith('en-')
-    );
-
-    // 원어민 음성 우선 정렬 (US, UK 음성을 앞으로)
-    englishVoices.sort((a, b) => {
-        const isNativeA = a.lang === 'en-US' || a.lang === 'en-GB';
-        const isNativeB = b.lang === 'en-US' || b.lang === 'en-GB';
-        
-        if (isNativeA && !isNativeB) return -1;
-        if (!isNativeA && isNativeB) return 1;
-        return 0;
-    });
-    
-    voiceSelect.innerHTML = englishVoices.map(voice => `
-        <option value="${voice.name}" ${voice.lang === 'en-US' ? 'selected' : ''}>
-=======
     const englishVoices = voices.filter(voice => voice.lang.includes('en'));
     
     voiceSelect.innerHTML = englishVoices.map(voice => `
         <option value="${voice.name}">
->>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
             ${voice.name} (${voice.lang})
         </option>
     `).join('');
 
     if (englishVoices.length > 0) {
-<<<<<<< HEAD
-        // 미국 영어 음성을 우선 선택
-        const usVoice = englishVoices.find(voice => voice.lang === 'en-US');
-        // 없으면 영국 영어 음성 선택
-        const gbVoice = englishVoices.find(voice => voice.lang === 'en-GB');
-        // 둘 다 없으면 첫 번째 영어 음성 선택
-        selectedVoice = usVoice || gbVoice || englishVoices[0];
-        
-        if (selectedVoice) {
-            voiceSelect.value = selectedVoice.name;
-        }
-    }
-}
-
-// 음성 목록이 로드되면 실행
-=======
         selectedVoice = englishVoices[0];
         voiceSelect.value = selectedVoice.name;
     }
 }
 
->>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
+// 음성 목록이 로드되면 실행
 if (speechSynthesis.onvoiceschanged !== undefined) {
     speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-<<<<<<< HEAD
-// 초기 음성 목록 로드 시도
-loadVoices();
-
-// 5초 후에도 음성이 없으면 다시 시도
-setTimeout(() => {
-    if (!selectedVoice) {
-        loadVoices();
-    }
-}, 5000);
-
-=======
->>>>>>> c1d9329647c7ebf2601b925694575ebd3068c6c6
 // 섹션 전환
 function switchSection(targetSection) {
-    sections.forEach(section => section.classList.remove('active'));
-    menuBtns.forEach(btn => btn.classList.remove('active'));
+    console.log('Switching to section:', targetSection); // 디버깅용 로그
+    sections.forEach(section => {
+        section.classList.remove('active');
+        console.log('Removed active from:', section.id); // 디버깅용 로그
+    });
+    menuBtns.forEach(btn => {
+        btn.classList.remove('active');
+        console.log('Removed active from button:', btn.dataset.section); // 디버깅용 로그
+    });
 
-    document.getElementById(targetSection).classList.add('active');
-    document.querySelector(`[data-section="${targetSection}"]`).classList.add('active');
+    const targetSectionElement = document.getElementById(targetSection);
+    const targetButton = document.querySelector(`[data-section="${targetSection}"]`);
 
-    if (targetSection === 'speaking') {
-        renderSpeakingList();
+    if (targetSectionElement && targetButton) {
+        targetSectionElement.classList.add('active');
+        targetButton.classList.add('active');
+        console.log('Added active to:', targetSection); // 디버깅용 로그
+
+        if (targetSection === 'speaking') {
+            renderSpeakingList();
+            loadVoices(); // 스피킹 섹션으로 전환시 음성 목록 다시 로드
+        }
+    } else {
+        console.error('Target section or button not found:', targetSection); // 디버깅용 로그
     }
 }
 
 // 이벤트 리스너
-addWordBtn.addEventListener('click', addWord);
-englishInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') koreanInput.focus();
-});
-koreanInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') addWord();
-});
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded'); // 디버깅용 로그
 
-menuBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        switchSection(btn.dataset.section);
+    // 단어 추가 이벤트
+    addWordBtn.addEventListener('click', addWord);
+    englishInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') koreanInput.focus();
     });
-});
+    koreanInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') addWord();
+    });
 
-memoryModeBtn.addEventListener('click', () => {
-    isMemoryMode = !isMemoryMode;
-    memoryModeBtn.classList.toggle('active');
-    updateWordList();
-});
+    // 메뉴 전환 이벤트
+    menuBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            console.log('Menu button clicked:', btn.dataset.section); // 디버깅용 로그
+            switchSection(btn.dataset.section);
+        });
+    });
 
-sortLengthBtn.addEventListener('click', () => {
-    isLongToShort = !isLongToShort;
-    sortLengthBtn.innerHTML = `
-        <i class="fas fa-sort-amount-${isLongToShort ? 'down' : 'up'}"></i>
-        ${isLongToShort ? '긴 단어순' : '짧은 단어순'}
-    `;
-    sortWords();
-});
+    // 암기 모드 이벤트
+    memoryModeBtn.addEventListener('click', () => {
+        isMemoryMode = !isMemoryMode;
+        memoryModeBtn.classList.toggle('active');
+        updateWordList();
+    });
 
-shuffleBtn.addEventListener('click', shuffleWords);
+    // 정렬 이벤트
+    sortLengthBtn.addEventListener('click', () => {
+        isLongToShort = !isLongToShort;
+        sortLengthBtn.innerHTML = `
+            <i class="fas fa-sort-amount-${isLongToShort ? 'down' : 'up'}"></i>
+            ${isLongToShort ? '긴 단어순' : '짧은 단어순'}
+        `;
+        sortWords();
+    });
 
-// 시험 모드 이벤트 리스너
-document.getElementById('startKorToEng').addEventListener('click', () => startTest('KorToEng'));
-document.getElementById('startEngToKor').addEventListener('click', () => startTest('EngToKor'));
-document.getElementById('startListenToEng').addEventListener('click', () => startTest('ListenToEng'));
+    // 섞기 이벤트
+    shuffleBtn.addEventListener('click', shuffleWords);
 
-submitAnswerBtn.addEventListener('click', checkAnswer);
-answerInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') checkAnswer();
-});
+    // 시험 모드 이벤트
+    document.getElementById('startKorToEng').addEventListener('click', () => {
+        console.log('Starting KorToEng test'); // 디버깅용 로그
+        startTest('KorToEng');
+    });
+    document.getElementById('startEngToKor').addEventListener('click', () => {
+        console.log('Starting EngToKor test'); // 디버깅용 로그
+        startTest('EngToKor');
+    });
+    document.getElementById('startListenToEng').addEventListener('click', () => {
+        console.log('Starting ListenToEng test'); // 디버깅용 로그
+        startTest('ListenToEng');
+    });
 
-listenAgainBtn.addEventListener('click', () => {
-    const currentWord = testWords[currentTestIndex];
-    speakWord(currentWord.english);
-});
+    // 시험 관련 이벤트
+    submitAnswerBtn.addEventListener('click', checkAnswer);
+    answerInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') checkAnswer();
+    });
+    listenAgainBtn.addEventListener('click', () => {
+        const currentWord = testWords[currentTestIndex];
+        speakWord(currentWord.english);
+    });
+    retryWrongBtn.addEventListener('click', retryWrongWords);
+    restartTestBtn.addEventListener('click', () => startTest(currentTestMode));
+    backToOptionsBtn.addEventListener('click', () => {
+        testArea.style.display = 'none';
+        resultBox.style.display = 'none';
+        testOptions.style.display = 'block';
+    });
 
-retryWrongBtn.addEventListener('click', retryWrongWords);
-restartTestBtn.addEventListener('click', () => startTest(currentTestMode));
-backToOptionsBtn.addEventListener('click', () => {
-    testArea.style.display = 'none';
-    resultBox.style.display = 'none';
-    testOptions.style.display = 'block';
-});
+    // 스피킹 모드 이벤트
+    voiceSelect.addEventListener('change', e => {
+        selectedVoice = speechSynthesis.getVoices().find(voice => voice.name === e.target.value);
+    });
+    practiceAllBtn.addEventListener('click', practiceAllWords);
+    practiceRandomBtn.addEventListener('click', practiceRandomWord);
 
-// 스피킹 모드 이벤트 리스너
-voiceSelect.addEventListener('change', e => {
-    selectedVoice = speechSynthesis.getVoices().find(voice => voice.name === e.target.value);
-});
-
-practiceAllBtn.addEventListener('click', practiceAllWords);
-practiceRandomBtn.addEventListener('click', practiceRandomWord);
-
-// 초기화
-loadWords(); 
+    // 초기 데이터 로드
+    loadWords();
+    loadVoices();
+}); 
